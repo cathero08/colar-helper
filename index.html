@@ -1,0 +1,1610 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#111827">
+  <meta name="description" content="手機優先的色彩辨識與色盲模擬工具，可部署在 GitHub Pages 使用。">
+  <title>Color Helper | 色彩輔助工具</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #0f172a;
+      --panel: rgba(15, 23, 42, 0.88);
+      --panel-strong: #111827;
+      --line: rgba(148, 163, 184, 0.28);
+      --text: #f8fafc;
+      --muted: #cbd5e1;
+      --soft: #94a3b8;
+      --accent: #38bdf8;
+      --ok: #34d399;
+      --warn: #fbbf24;
+      --danger: #fb7185;
+      --shadow: 0 18px 55px rgba(2, 6, 23, 0.38);
+      font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html,
+    body {
+      min-height: 100%;
+    }
+
+    body {
+      margin: 0;
+      background:
+        radial-gradient(circle at 20% 0%, rgba(56, 189, 248, 0.22), transparent 32rem),
+        radial-gradient(circle at 90% 12%, rgba(168, 85, 247, 0.18), transparent 26rem),
+        var(--bg);
+      color: var(--text);
+      overflow-x: hidden;
+    }
+
+    button,
+    input,
+    select {
+      font: inherit;
+    }
+
+    button {
+      border: 0;
+      cursor: pointer;
+    }
+
+    .app {
+      display: grid;
+      gap: 0.7rem;
+      min-height: 100dvh;
+      padding: max(0.65rem, env(safe-area-inset-top)) 0.65rem max(0.65rem, env(safe-area-inset-bottom));
+    }
+
+    .hero,
+    .card {
+      border: 1px solid var(--line);
+      background: var(--panel);
+      border-radius: 1.5rem;
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(20px);
+    }
+
+    .hero {
+      padding: 0.85rem;
+    }
+
+    .eyebrow {
+      margin: 0 0 0.3rem;
+      color: var(--accent);
+      font-size: 0.74rem;
+      font-weight: 800;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: clamp(1.5rem, 7.5vw, 4.8rem);
+      line-height: 0.95;
+      letter-spacing: -0.06em;
+    }
+
+    .intro {
+      margin: 0.55rem 0 0;
+      color: var(--muted);
+      font-size: 0.9rem;
+      line-height: 1.45;
+    }
+
+    .camera-card {
+      position: relative;
+      display: grid;
+      gap: 0.55rem;
+      padding: 0.55rem;
+    }
+
+    .viewer {
+      position: relative;
+      height: clamp(13rem, 34dvh, 21rem);
+      min-height: 0;
+      overflow: hidden;
+      border: 1px solid var(--line);
+      border-radius: 1.2rem;
+      background: #020617;
+      isolation: isolate;
+    }
+
+    video,
+    canvas {
+      width: 100%;
+      height: 100%;
+      min-height: 0;
+      object-fit: cover;
+      display: block;
+    }
+
+    canvas {
+      display: none;
+    }
+
+    .viewer.is-frozen video {
+      display: none;
+    }
+
+    .viewer.is-frozen canvas {
+      display: block;
+    }
+
+    .sample-marker {
+      position: absolute;
+      z-index: 5;
+      width: 1.15rem;
+      height: 1.15rem;
+      border: 2px solid var(--text);
+      border-radius: 999px;
+      background: rgba(15, 23, 42, 0.38);
+      box-shadow: 0 0 0 4px rgba(15, 23, 42, 0.45);
+      pointer-events: none;
+      transform: translate(-50%, -50%);
+    }
+
+    .sample-marker[hidden] {
+      display: none;
+    }
+
+    .viewer::before,
+    .viewer::after {
+      content: "";
+      position: absolute;
+      z-index: 4;
+      left: 50%;
+      top: 50%;
+      pointer-events: none;
+      transform: translate(-50%, -50%);
+    }
+
+    .viewer::before {
+      width: 4.2rem;
+      height: 4.2rem;
+      border: 2px solid rgba(248, 250, 252, 0.88);
+      border-radius: 999px;
+      box-shadow: 0 0 0 999px rgba(2, 6, 23, 0.14);
+    }
+
+    .viewer::after {
+      width: 0.65rem;
+      height: 0.65rem;
+      border-radius: 50%;
+      background: var(--text);
+      box-shadow: 0 0 0 4px rgba(15, 23, 42, 0.72);
+    }
+
+    .permission {
+      position: absolute;
+      inset: 0;
+      z-index: 6;
+      display: grid;
+      place-items: center;
+      padding: 1.5rem;
+      background:
+        linear-gradient(rgba(15, 23, 42, 0.82), rgba(15, 23, 42, 0.82)),
+        radial-gradient(circle at center, rgba(56, 189, 248, 0.2), transparent 24rem);
+      text-align: center;
+    }
+
+    .permission[hidden] {
+      display: none;
+    }
+
+    .permission p {
+      max-width: 28rem;
+      margin: 0.6rem auto 1rem;
+      color: var(--muted);
+      line-height: 1.6;
+    }
+
+    .controls {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0.65rem;
+    }
+
+    .actions-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 0.55rem;
+    }
+
+    .btn.small {
+      min-height: 2.45rem;
+      padding: 0.55rem 0.75rem;
+      font-size: 0.9rem;
+    }
+
+    .btn {
+      min-height: 2.75rem;
+      padding: 0.68rem 0.9rem;
+      border-radius: 999px;
+      color: #031018;
+      background: var(--accent);
+      font-weight: 800;
+      box-shadow: 0 12px 30px rgba(56, 189, 248, 0.28);
+    }
+
+    .btn.secondary {
+      color: var(--text);
+      background: rgba(15, 23, 42, 0.86);
+      border: 1px solid var(--line);
+      box-shadow: none;
+    }
+
+    .btn:disabled {
+      cursor: not-allowed;
+      opacity: 0.55;
+    }
+
+    .results {
+      display: grid;
+      gap: 0.7rem;
+    }
+
+    .color-card {
+      display: grid;
+      grid-template-columns: 4.4rem minmax(0, 1fr);
+      grid-template-areas:
+        "swatch summary"
+        "metrics metrics";
+      gap: 0.65rem;
+      align-items: center;
+      padding: 0.75rem;
+      position: sticky;
+      bottom: max(0.65rem, env(safe-area-inset-bottom));
+      z-index: 8;
+    }
+
+    .swatch {
+      grid-area: swatch;
+      height: 100%;
+      min-height: 3.7rem;
+      border-radius: 1.2rem;
+      border: 1px solid rgba(255, 255, 255, 0.3);
+      background:
+        linear-gradient(135deg, rgba(255, 255, 255, 0.18), rgba(255, 255, 255, 0)),
+        var(--picked, #64748b);
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.25);
+    }
+
+    .color-card > div:nth-of-type(2) {
+      grid-area: summary;
+      min-width: 0;
+    }
+
+    .color-name {
+      margin: 0;
+      font-size: clamp(1.25rem, 6vw, 2.6rem);
+      line-height: 1;
+      letter-spacing: -0.04em;
+    }
+
+    .color-note {
+      margin: 0.25rem 0 0;
+      color: var(--muted);
+      font-size: 0.88rem;
+      line-height: 1.4;
+    }
+
+    .metrics {
+      grid-area: metrics;
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 0.45rem;
+    }
+
+    .metric {
+      padding: 0.55rem 0.65rem;
+      border: 1px solid var(--line);
+      border-radius: 1rem;
+      background: rgba(15, 23, 42, 0.58);
+    }
+
+    .label {
+      display: block;
+      color: var(--soft);
+      font-size: 0.68rem;
+      font-weight: 800;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .value {
+      display: block;
+      margin-top: 0.18rem;
+      color: var(--text);
+      font-size: 0.86rem;
+      font-weight: 750;
+      word-break: break-word;
+    }
+
+    .sim-card,
+    .tips-card {
+      padding: 1rem;
+    }
+
+    .section-title {
+      margin: 0 0 0.8rem;
+      font-size: 1.1rem;
+      letter-spacing: -0.02em;
+    }
+
+    .sim-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 0.65rem;
+    }
+
+    .sim {
+      min-height: 6.2rem;
+      padding: 0.8rem;
+      border: 1px solid var(--line);
+      border-radius: 1rem;
+      background: var(--sim-color, #64748b);
+      color: var(--sim-text, #fff);
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-end;
+      text-shadow: 0 1px 12px rgba(0, 0, 0, 0.4);
+    }
+
+    .sim strong {
+      font-size: 0.96rem;
+    }
+
+    .sim span {
+      margin-top: 0.25rem;
+      font-size: 0.82rem;
+      opacity: 0.9;
+    }
+
+    .utility-card {
+      padding: 1rem;
+    }
+
+    .info-list,
+    .history-list,
+    .compare-grid {
+      display: grid;
+      gap: 0.55rem;
+    }
+
+    .info-row,
+    .history-item,
+    .compare-slot,
+    .advice-box {
+      display: grid;
+      gap: 0.25rem;
+      padding: 0.75rem;
+      border: 1px solid var(--line);
+      border-radius: 1rem;
+      color: var(--muted);
+      background: rgba(15, 23, 42, 0.48);
+      line-height: 1.45;
+    }
+
+    .info-row strong,
+    .history-item strong,
+    .compare-slot strong,
+    .advice-box strong {
+      color: var(--text);
+    }
+
+    .history-item {
+      grid-template-columns: 2.3rem 1fr auto;
+      align-items: center;
+      width: 100%;
+      border: 1px solid var(--line);
+      color: var(--muted);
+      text-align: left;
+      cursor: pointer;
+    }
+
+    .history-swatch,
+    .compare-swatch,
+    .contrast-swatch {
+      width: 2.3rem;
+      height: 2.3rem;
+      border-radius: 0.8rem;
+      border: 1px solid rgba(255, 255, 255, 0.28);
+      background: var(--item-color, #64748b);
+    }
+
+    .compare-grid {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .compare-slot {
+      min-height: 5.2rem;
+    }
+
+    .contrast-preview {
+      display: grid;
+      grid-template-columns: auto 1fr;
+      gap: 0.7rem;
+      align-items: center;
+    }
+
+    .muted-text {
+      color: var(--soft);
+      font-size: 0.86rem;
+    }
+
+    .tips {
+      display: grid;
+      gap: 0.75rem;
+      margin: 0;
+      padding: 0;
+      list-style: none;
+    }
+
+    .tips li {
+      padding: 0.85rem;
+      border: 1px solid var(--line);
+      border-radius: 1rem;
+      color: var(--muted);
+      background: rgba(15, 23, 42, 0.48);
+      line-height: 1.55;
+    }
+
+    .fallback {
+      display: grid;
+      grid-template-columns: auto 1fr;
+      gap: 0.65rem;
+      align-items: center;
+      padding: 0.9rem 1rem;
+      border: 1px solid rgba(251, 191, 36, 0.36);
+      border-radius: 1rem;
+      color: #fde68a;
+      background: rgba(120, 53, 15, 0.35);
+      font-size: 0.92rem;
+      line-height: 1.5;
+    }
+
+    .fallback[hidden] {
+      display: none;
+    }
+
+    input[type="color"] {
+      width: 3rem;
+      height: 3rem;
+      padding: 0;
+      border: 0;
+      border-radius: 50%;
+      overflow: hidden;
+      background: transparent;
+    }
+
+    .manual-picker {
+      display: grid;
+      grid-template-columns: auto 1fr;
+      gap: 0.8rem;
+      align-items: center;
+      padding: 0.75rem;
+      color: var(--muted);
+      font-size: 0.9rem;
+      line-height: 1.4;
+    }
+
+    @media (min-width: 860px) {
+      .app {
+        grid-template-columns: minmax(20rem, 0.9fr) minmax(28rem, 1.1fr);
+        align-items: start;
+        max-width: 1180px;
+        margin: 0 auto;
+        padding: 2rem;
+      }
+
+      .hero {
+        position: sticky;
+        top: 2rem;
+        padding: 1.25rem;
+      }
+
+      .eyebrow {
+        margin-bottom: 0.45rem;
+        font-size: 0.82rem;
+      }
+
+      h1 {
+        font-size: clamp(1.9rem, 10vw, 4.8rem);
+      }
+
+      .intro {
+        margin-top: 0.85rem;
+        font-size: 1rem;
+        line-height: 1.6;
+      }
+
+      .camera-card {
+        grid-column: 2;
+        grid-row: 1 / span 2;
+      }
+
+      .results {
+        grid-column: 1 / -1;
+        grid-template-columns: 1fr 1fr;
+      }
+
+      .utility-card,
+      .manual-picker {
+        align-self: start;
+      }
+
+      .viewer,
+      video,
+      canvas {
+        height: min(70dvh, 42rem);
+        min-height: min(70dvh, 42rem);
+      }
+
+      .color-card {
+        grid-template-columns: 1fr;
+        grid-template-areas:
+          "swatch"
+          "summary"
+          "metrics";
+        gap: 1rem;
+        padding: 1rem;
+        position: static;
+      }
+
+      .swatch {
+        min-height: 7rem;
+        height: auto;
+      }
+
+      .color-note {
+        font-size: 1rem;
+        line-height: 1.55;
+      }
+
+      .metrics {
+        gap: 0.65rem;
+      }
+
+      .metric {
+        padding: 0.85rem;
+      }
+
+      .label {
+        font-size: 0.78rem;
+      }
+
+      .value {
+        margin-top: 0.25rem;
+        font-size: 0.95rem;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="app">
+    <section class="hero" aria-labelledby="title">
+      <p class="eyebrow">Color Helper</p>
+      <h1 id="title">手機色彩辨識工具</h1>
+      <p class="intro">
+        參考 Color Blind Pal 的使用方式：用相機對準物品中央，即時辨識顏色、顯示色碼，並模擬常見色覺差異下看到的顏色。
+      </p>
+    </section>
+
+    <section class="camera-card card" aria-label="相機取色">
+      <div class="viewer" id="viewer">
+        <video id="video" playsinline autoplay muted></video>
+        <canvas id="canvas"></canvas>
+        <div class="sample-marker" id="sampleMarker" hidden></div>
+        <div class="permission" id="permission">
+          <div>
+            <h2 class="section-title">開啟相機開始取色</h2>
+            <p>GitHub Pages 的 HTTPS 環境可使用手機相機。請允許相機權限，然後把目標顏色放在圓圈中央。</p>
+            <button class="btn" id="startCamera">啟動相機</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="fallback" id="fallback" hidden>
+        <strong>!</strong>
+        <span id="fallbackText">無法使用相機時，可用下方手動選色。</span>
+      </div>
+
+      <div class="controls">
+        <button class="btn secondary" id="sampleNow" disabled>重新取樣</button>
+        <button class="btn secondary" id="switchCamera" disabled>切換鏡頭</button>
+      </div>
+      <div class="actions-grid" aria-label="進階取色操作">
+        <button class="btn secondary small" id="freezeFrame" disabled>凍結畫面</button>
+        <button class="btn secondary small" id="cameraPower" disabled>關閉相機</button>
+        <button class="btn secondary small" id="setCompareA">設為 A 色</button>
+        <button class="btn secondary small" id="setCompareB">設為 B 色</button>
+      </div>
+    </section>
+
+    <section class="results">
+      <article class="color-card card" aria-live="polite">
+        <div class="swatch" id="swatch"></div>
+        <div>
+          <h2 class="color-name" id="colorName">等待取色</h2>
+          <p class="color-note" id="colorNote">啟動相機後，中央圓點會持續讀取平均色，減少手機手震造成的誤差。</p>
+        </div>
+        <div class="metrics">
+          <div class="metric">
+            <span class="label">HEX</span>
+            <span class="value" id="hexValue">#64748B</span>
+          </div>
+          <div class="metric">
+            <span class="label">RGB</span>
+            <span class="value" id="rgbValue">100, 116, 139</span>
+          </div>
+          <div class="metric">
+            <span class="label">HSL</span>
+            <span class="value" id="hslValue">215°, 16%, 47%</span>
+          </div>
+          <div class="metric">
+            <span class="label">明暗</span>
+            <span class="value" id="toneValue">中等亮度</span>
+          </div>
+        </div>
+      </article>
+
+      <label class="manual-picker card">
+        <input type="color" id="manualColor" value="#64748b" aria-label="手動選擇顏色">
+        <span>也可以手動選色，快速比較色碼與模擬結果。</span>
+      </label>
+
+      <article class="utility-card card">
+        <h2 class="section-title">相近色排名</h2>
+        <div class="info-list" id="closestList" aria-live="polite"></div>
+      </article>
+
+      <article class="utility-card card">
+        <h2 class="section-title">A/B 色差比較</h2>
+        <div class="compare-grid">
+          <div class="compare-slot" id="compareA">A 色尚未設定</div>
+          <div class="compare-slot" id="compareB">B 色尚未設定</div>
+        </div>
+        <div class="advice-box" id="compareResult">設定 A 色與 B 色後會顯示 CIEDE2000 色差。</div>
+      </article>
+
+      <article class="utility-card card">
+        <h2 class="section-title">輔助建議</h2>
+        <div class="info-list">
+          <div class="advice-box contrast-preview" id="contrastAdvice"></div>
+          <div class="advice-box" id="confusionAdvice">取色後會顯示色覺混淆提示。</div>
+        </div>
+      </article>
+
+      <article class="utility-card card">
+        <h2 class="section-title">最近取色</h2>
+        <div class="history-list" id="historyList">尚無歷史紀錄。點選畫面、重新取樣或手動選色會加入紀錄。</div>
+      </article>
+
+      <article class="sim-card card">
+        <h2 class="section-title">色覺模擬</h2>
+        <div class="sim-grid" id="simGrid" aria-label="色覺差異模擬結果"></div>
+      </article>
+
+      <article class="tips-card card">
+        <h2 class="section-title">手機使用小提醒</h2>
+        <ul class="tips">
+          <li>請在光線穩定的地方使用，避免螢光燈閃爍或陰影讓顏色偏移。</li>
+          <li>相機辨識會受白平衡影響；重要場合請同時參考 HEX/RGB 或手動選色。</li>
+          <li>此頁是純前端工具，相機畫面只在你的瀏覽器中處理，不會上傳到伺服器。</li>
+        </ul>
+      </article>
+    </section>
+  </main>
+
+  <script>
+    const video = document.querySelector("#video");
+    const canvas = document.querySelector("#canvas");
+    const ctx = canvas.getContext("2d", { willReadFrequently: true });
+    const startCameraButton = document.querySelector("#startCamera");
+    const sampleNowButton = document.querySelector("#sampleNow");
+    const switchCameraButton = document.querySelector("#switchCamera");
+    const permission = document.querySelector("#permission");
+    const fallback = document.querySelector("#fallback");
+    const fallbackText = document.querySelector("#fallbackText");
+    const manualColor = document.querySelector("#manualColor");
+    const swatch = document.querySelector("#swatch");
+    const colorName = document.querySelector("#colorName");
+    const colorNote = document.querySelector("#colorNote");
+    const hexValue = document.querySelector("#hexValue");
+    const rgbValue = document.querySelector("#rgbValue");
+    const hslValue = document.querySelector("#hslValue");
+    const toneValue = document.querySelector("#toneValue");
+    const simGrid = document.querySelector("#simGrid");
+    const viewer = document.querySelector("#viewer");
+    const sampleMarker = document.querySelector("#sampleMarker");
+    const freezeFrameButton = document.querySelector("#freezeFrame");
+    const cameraPowerButton = document.querySelector("#cameraPower");
+    const setCompareAButton = document.querySelector("#setCompareA");
+    const setCompareBButton = document.querySelector("#setCompareB");
+    const closestList = document.querySelector("#closestList");
+    const historyList = document.querySelector("#historyList");
+    const compareAElement = document.querySelector("#compareA");
+    const compareBElement = document.querySelector("#compareB");
+    const compareResult = document.querySelector("#compareResult");
+    const contrastAdvice = document.querySelector("#contrastAdvice");
+    const confusionAdvice = document.querySelector("#confusionAdvice");
+
+    const isccNbsCentroids = [
+      // ISCC-NBS Level 3 contains 267 named color blocks. RGB centroids from
+      // https://people.csail.mit.edu/jaffer/Color/NBS-ISCC-rgb.txt
+      // Copyright (c) 2003 Voluntocracy. Redistribution permitted with this notice preserved.
+      [0, 84, 61, "Deep Green", "深綠色"],
+      [0, 42, 41, "Very Dark Bluish Green", "極暗藍綠色"],
+      [0, 46, 59, "Very Dark Greenish Blue", "極暗綠藍色"],
+      [0, 73, 88, "Dark Greenish Blue", "暗綠藍色"],
+      [0, 75, 73, "Dark Bluish Green", "暗藍綠色"],
+      [0, 68, 63, "Deep Bluish Green", "深藍綠色"],
+      [27, 77, 62, "Dark Green", "暗綠色"],
+      [43, 61, 38, "Dark Olive Green", "暗橄欖綠色"],
+      [23, 54, 32, "Very Dark Yellowish Green", "極暗黃綠色"],
+      [0, 49, 24, "Very Deep Yellowish Green", "極深黃綠色"],
+      [28, 53, 45, "Very Dark Green", "極暗綠色"],
+      [54, 53, 39, "Dark Grayish Olive", "暗灰橄欖色"],
+      [49, 54, 43, "Dark Grayish Olive Green", "暗灰橄欖綠色"],
+      [62, 50, 44, "Dark Grayish Brown", "暗灰棕色"],
+      [37, 36, 29, "Olive Black", "橄欖黑色"],
+      [40, 32, 28, "Brownish Black", "褐黑色"],
+      [59, 49, 33, "Dark Olive Brown", "暗橄欖棕色"],
+      [64, 61, 33, "Dark Olive", "暗橄欖色"],
+      [72, 60, 50, "Dark Grayish Yellowish Brown", "暗灰黃棕色"],
+      [58, 75, 71, "Dark Grayish Green", "暗灰綠色"],
+      [54, 69, 79, "Dark Grayish Blue", "暗灰藍色"],
+      [26, 36, 33, "Blackish Green", "黑綠色"],
+      [30, 35, 33, "Greenish Black", "綠黑色"],
+      [32, 36, 40, "Bluish Black", "藍黑色"],
+      [32, 40, 48, "Blackish Blue", "黑藍色"],
+      [34, 34, 34, "Black", "黑色"],
+      [36, 33, 36, "Purplish Black", "紫黑色"],
+      [40, 32, 34, "Reddish Black", "紅黑色"],
+      [0, 48, 78, "Dark Blue", "暗藍色"],
+      [0, 65, 106, "Deep Blue", "深藍色"],
+      [76, 81, 109, "Grayish Purplish Blue", "灰紫藍色"],
+      [0, 103, 165, "Strong Blue", "濃藍色"],
+      [0, 119, 145, "Strong Greenish Blue", "濃綠藍色"],
+      [54, 117, 136, "Moderate Greenish Blue", "中綠藍色"],
+      [46, 132, 149, "Deep Greenish Blue", "深綠藍色"],
+      [0, 133, 161, "Vivid Greenish Blue", "鮮綠藍色"],
+      [67, 107, 149, "Moderate Blue", "中藍色"],
+      [94, 113, 106, "Grayish Green", "灰綠色"],
+      [83, 104, 120, "Grayish Blue", "灰藍色"],
+      [81, 88, 94, "Dark Bluish Gray", "暗藍灰色"],
+      [85, 85, 85, "Dark Gray", "暗灰色"],
+      [93, 85, 91, "Dark Purplish Gray", "暗紫灰色"],
+      [78, 87, 85, "Dark Greenish Gray", "暗綠灰色"],
+      [91, 80, 79, "Brownish Gray", "褐灰色"],
+      [92, 80, 79, "Dark Reddish Gray", "暗紅灰色"],
+      [87, 85, 76, "Olive Gray", "橄欖灰色"],
+      [99, 81, 71, "Grayish Brown", "灰棕色"],
+      [81, 87, 68, "Grayish Olive Green", "灰橄欖綠色"],
+      [91, 88, 66, "Grayish Olive", "灰橄欖色"],
+      [126, 109, 90, "Grayish Yellowish Brown", "灰黃棕色"],
+      [53, 94, 59, "Dark Yellowish Green", "暗黃綠色"],
+      [49, 120, 115, "Moderate Bluish Green", "中藍綠色"],
+      [0, 136, 130, "Vivid Bluish Green", "鮮藍綠色"],
+      [0, 122, 116, "Strong Bluish Green", "濃藍綠色"],
+      [59, 120, 97, "Moderate Green", "中綠色"],
+      [0, 121, 89, "Strong Green", "濃綠色"],
+      [0, 161, 194, "Vivid Blue", "鮮藍色"],
+      [35, 158, 186, "Brilliant Greenish Blue", "亮綠藍色"],
+      [73, 151, 208, "Brilliant Blue", "亮藍色"],
+      [112, 163, 204, "Light Blue", "淺藍色"],
+      [102, 170, 188, "Light Greenish Blue", "淺綠藍色"],
+      [161, 202, 241, "Very Light Blue", "極淺藍色"],
+      [179, 188, 226, "Very Light Purplish Blue", "極淺紫藍色"],
+      [150, 222, 209, "Very Light Bluish Green", "極淺藍綠色"],
+      [142, 209, 178, "Very Light Green", "極淺綠色"],
+      [199, 230, 215, "Very Pale Green", "極淡綠色"],
+      [223, 237, 232, "Greenish White", "綠白色"],
+      [232, 227, 229, "Purplish White", "紫白色"],
+      [233, 233, 237, "Bluish White", "藍白色"],
+      [242, 243, 244, "White", "白色"],
+      [240, 234, 214, "Yellowish White", "黃白色"],
+      [236, 213, 197, "Pale Yellowish Pink", "淡黃粉紅色"],
+      [234, 227, 225, "Pinkish White", "粉白色"],
+      [178, 190, 181, "Light Greenish Gray", "淺綠灰色"],
+      [191, 185, 189, "Light Purplish Gray", "淺紫灰色"],
+      [192, 200, 225, "Very Pale Purplish Blue", "極淡紫藍色"],
+      [196, 195, 221, "Very Pale Violet", "極淡紫羅蘭色"],
+      [188, 212, 230, "Very Pale Blue", "極淡藍色"],
+      [180, 188, 192, "Light Bluish Gray", "淺藍灰色"],
+      [156, 209, 220, "Very Light Greenish Blue", "極淺綠藍色"],
+      [141, 163, 153, "Pale Green", "淡綠色"],
+      [145, 163, 176, "Pale Blue", "淡藍色"],
+      [193, 182, 179, "Pinkish Gray", "粉灰色"],
+      [185, 184, 181, "Light Gray", "淺灰色"],
+      [194, 172, 153, "Brownish Pink", "褐粉紅色"],
+      [191, 184, 165, "Yellowish Gray", "黃灰色"],
+      [174, 155, 130, "Light Grayish Yellowish Brown", "淺灰黃棕色"],
+      [143, 151, 121, "Grayish Yellow Green", "灰黃綠色"],
+      [138, 135, 118, "Light Olive Gray", "淺橄欖灰色"],
+      [140, 135, 103, "Light Grayish Olive", "淺灰橄欖色"],
+      [149, 128, 112, "Light Grayish Brown", "淺灰棕色"],
+      [142, 130, 121, "Light Brownish Gray", "淺褐灰色"],
+      [143, 129, 127, "Reddish Gray", "紅灰色"],
+      [139, 133, 137, "Purplish Gray", "紫灰色"],
+      [129, 135, 139, "Bluish Gray", "藍灰色"],
+      [132, 132, 130, "Medium Gray", "中灰色"],
+      [140, 146, 172, "Pale Purplish Blue", "淡紫藍色"],
+      [125, 137, 132, "Greenish Gray", "綠灰色"],
+      [106, 171, 142, "Light Green", "淺綠色"],
+      [102, 173, 164, "Light Bluish Green", "淺藍綠色"],
+      [0, 166, 147, "Brilliant Bluish Green", "亮藍綠色"],
+      [62, 180, 137, "Brilliant Green", "亮綠色"],
+      [68, 148, 74, "Strong Yellowish Green", "濃黃綠色"],
+      [39, 166, 76, "Vivid Yellowish Green", "鮮黃綠色"],
+      [147, 197, 146, "Light Yellowish Green", "淺黃綠色"],
+      [103, 146, 103, "Moderate Yellowish Green", "中黃綠色"],
+      [138, 154, 91, "Moderate Yellow Green", "中黃綠色"],
+      [152, 148, 62, "Dark Greenish Yellow", "暗綠黃色"],
+      [171, 145, 68, "Dark Yellow", "暗黃色"],
+      [161, 143, 96, "Dark Grayish Yellow", "暗灰黃色"],
+      [194, 178, 128, "Grayish Yellow", "灰黃色"],
+      [185, 181, 125, "Grayish Greenish Yellow", "灰綠黃色"],
+      [201, 174, 93, "Moderate Yellow", "中黃色"],
+      [185, 180, 89, "Moderate Greenish Yellow", "中綠黃色"],
+      [201, 220, 137, "Light Yellow Green", "淺黃綠色"],
+      [250, 214, 165, "Pale Orange Yellow", "淡橙黃色"],
+      [218, 223, 183, "Pale Yellow Green", "淡黃綠色"],
+      [243, 229, 171, "Pale Yellow", "淡黃色"],
+      [248, 222, 126, "Light Yellow", "淺黃色"],
+      [235, 232, 164, "Pale Greenish Yellow", "淡綠黃色"],
+      [182, 229, 175, "Very Light Yellowish Green", "極淺黃綠色"],
+      [131, 211, 125, "Brilliant Yellowish Green", "亮黃綠色"],
+      [189, 218, 87, "Brilliant Yellow Green", "亮黃綠色"],
+      [233, 228, 80, "Brilliant Greenish Yellow", "亮綠黃色"],
+      [234, 230, 121, "Light Greenish Yellow", "淺綠黃色"],
+      [250, 218, 94, "Brilliant Yellow", "亮黃色"],
+      [243, 195, 0, "Vivid Yellow", "鮮黃色"],
+      [220, 211, 0, "Vivid Greenish Yellow", "鮮綠黃色"],
+      [190, 183, 46, "Strong Greenish Yellow", "濃綠黃色"],
+      [212, 175, 55, "Strong Yellow", "濃黃色"],
+      [175, 141, 19, "Deep Yellow", "深黃色"],
+      [155, 148, 0, "Deep Greenish Yellow", "深綠黃色"],
+      [141, 182, 0, "Vivid Yellow Green", "鮮黃綠色"],
+      [126, 159, 46, "Strong Yellow Green", "濃黃綠色"],
+      [0, 136, 86, "Vivid Green", "鮮綠色"],
+      [70, 113, 41, "Deep Yellow Green", "深黃綠色"],
+      [0, 98, 45, "Deep Yellowish Green", "深黃綠色"],
+      [74, 93, 35, "Moderate Olive Green", "中橄欖綠色"],
+      [102, 93, 30, "Moderate Olive", "中橄欖色"],
+      [134, 126, 54, "Light Olive", "淺橄欖色"],
+      [108, 84, 30, "Moderate Olive Brown", "中橄欖棕色"],
+      [35, 47, 0, "Deep Olive Green", "深橄欖綠色"],
+      [64, 79, 0, "Strong Olive Green", "濃橄欖綠色"],
+      [150, 113, 23, "Light Olive Brown", "淺橄欖棕色"],
+      [190, 101, 22, "Deep Orange", "深橙色"],
+      [86, 7, 12, "Deep Reddish Brown", "深紅棕色"],
+      [89, 51, 25, "Deep Brown", "深棕色"],
+      [101, 69, 34, "Deep Yellowish Brown", "深黃棕色"],
+      [111, 78, 55, "Moderate Brown", "中棕色"],
+      [130, 102, 68, "Moderate Yellowish Brown", "中黃棕色"],
+      [153, 101, 21, "Strong Yellowish Brown", "濃黃棕色"],
+      [128, 70, 27, "Strong Brown", "濃棕色"],
+      [174, 105, 56, "Brownish Orange", "褐橙色"],
+      [158, 71, 50, "Dark Reddish Orange", "暗紅橙色"],
+      [188, 63, 74, "Strong Red", "濃紅色"],
+      [170, 56, 30, "Deep Reddish Orange", "深紅橙色"],
+      [190, 0, 50, "Vivid Red", "鮮紅色"],
+      [136, 45, 23, "Strong Reddish Brown", "濃紅棕色"],
+      [226, 88, 34, "Vivid Reddish Orange", "鮮紅橙色"],
+      [230, 103, 33, "Deep Yellowish Pink", "深黃粉紅色"],
+      [201, 133, 0, "Deep Orange Yellow", "深橙黃色"],
+      [234, 162, 33, "Strong Orange Yellow", "濃橙黃色"],
+      [246, 166, 0, "Vivid Orange Yellow", "鮮橙黃色"],
+      [237, 135, 45, "Strong Orange", "濃橙色"],
+      [253, 148, 63, "Brilliant Orange", "亮橙色"],
+      [243, 132, 0, "Vivid Orange", "鮮橙色"],
+      [255, 193, 79, "Brilliant Orange Yellow", "亮橙黃色"],
+      [251, 201, 127, "Light Orange Yellow", "淺橙黃色"],
+      [250, 181, 127, "Light Orange", "淺橙色"],
+      [255, 183, 165, "Vivid Yellowish Pink", "鮮黃粉紅色"],
+      [249, 147, 121, "Strong Yellowish Pink", "濃黃粉紅色"],
+      [217, 144, 88, "Moderate Orange", "中橙色"],
+      [227, 168, 87, "Moderate Orange Yellow", "中橙黃色"],
+      [193, 154, 107, "Light Yellowish Brown", "淺黃棕色"],
+      [166, 123, 91, "Light Brown", "淺棕色"],
+      [190, 138, 61, "Dark Orange Yellow", "暗橙黃色"],
+      [203, 109, 81, "Moderate Reddish Orange", "中紅橙色"],
+      [180, 116, 94, "Grayish Reddish Orange", "灰紅橙色"],
+      [217, 96, 59, "Strong Reddish Orange", "濃紅橙色"],
+      [222, 111, 161, "Deep Purplish Pink", "深紫粉紅色"],
+      [230, 143, 172, "Strong Purplish Pink", "濃紫粉紅色"],
+      [228, 113, 122, "Deep Pink", "深粉紅色"],
+      [196, 131, 121, "Dark Yellowish Pink", "暗黃粉紅色"],
+      [192, 128, 129, "Dark Pink", "暗粉紅色"],
+      [183, 132, 167, "Light Reddish Purple", "淺紅紫色"],
+      [193, 126, 145, "Dark Purplish Pink", "暗紫粉紅色"],
+      [170, 138, 158, "Pale Reddish Purple", "淡紅紫色"],
+      [150, 144, 171, "Pale Violet", "淡紫羅蘭色"],
+      [151, 127, 115, "Light Grayish Reddish Brown", "淺灰紅棕色"],
+      [168, 124, 109, "Light Reddish Brown", "淺紅棕色"],
+      [175, 134, 142, "Light Grayish Purplish Red", "淺灰紫紅色"],
+      [173, 136, 132, "Light Grayish Red", "淺灰紅色"],
+      [217, 166, 169, "Moderate Yellowish Pink", "中黃粉紅色"],
+      [222, 165, 164, "Moderate Pink", "中粉紅色"],
+      [199, 173, 163, "Grayish Yellowish Pink", "灰黃粉紅色"],
+      [196, 174, 173, "Grayish Pink", "灰粉紅色"],
+      [195, 166, 177, "Grayish Purplish Pink", "灰紫粉紅色"],
+      [170, 152, 169, "Pale Purple", "淡紫色"],
+      [213, 151, 174, "Moderate Purplish Pink", "中紫粉紅色"],
+      [234, 147, 153, "Strong Pink", "濃粉紅色"],
+      [255, 181, 186, "Vivid Pink", "鮮粉紅色"],
+      [255, 200, 214, "Brilliant Purplish Pink", "亮紫粉紅色"],
+      [239, 187, 204, "Light Purplish Pink", "淺紫粉紅色"],
+      [213, 186, 219, "Very Light Purple", "極淺紫色"],
+      [214, 202, 221, "Very Pale Purple", "極淡紫色"],
+      [232, 204, 215, "Pale Purplish Pink", "淡紫粉紅色"],
+      [244, 194, 194, "Light Yellowish Pink", "淺黃粉紅色"],
+      [234, 216, 215, "Pale Pink", "淡粉紅色"],
+      [249, 204, 202, "Light Pink", "淺粉紅色"],
+      [220, 208, 255, "Very Light Violet", "極淺紫羅蘭色"],
+      [211, 153, 230, "Brilliant Purple", "亮紫色"],
+      [182, 149, 192, "Light Purple", "淺紫色"],
+      [135, 145, 191, "Light Purplish Blue", "淺紫藍色"],
+      [140, 130, 182, "Light Violet", "淺紫羅蘭色"],
+      [144, 101, 202, "Vivid Violet", "鮮紫羅蘭色"],
+      [154, 78, 174, "Vivid Purple", "鮮紫色"],
+      [158, 79, 136, "Strong Reddish Purple", "濃紅紫色"],
+      [206, 70, 118, "Vivid Purplish Red", "鮮紫紅色"],
+      [171, 78, 82, "Moderate Red", "中紅色"],
+      [168, 81, 110, "Moderate Purplish Red", "中紫紅色"],
+      [179, 68, 108, "Strong Purplish Red", "濃紫紅色"],
+      [145, 92, 131, "Moderate Reddish Purple", "中紅紫色"],
+      [145, 95, 109, "Grayish Purplish Red", "灰紫紅色"],
+      [121, 68, 59, "Moderate Reddish Brown", "中紅棕色"],
+      [144, 93, 93, "Grayish Red", "灰紅色"],
+      [103, 76, 71, "Grayish Reddish Brown", "灰紅棕色"],
+      [121, 104, 120, "Grayish Purple", "灰紫色"],
+      [131, 100, 121, "Grayish Reddish Purple", "灰紅紫色"],
+      [108, 121, 184, "Brilliant Purplish Blue", "亮紫藍色"],
+      [126, 115, 184, "Brilliant Violet", "亮紫羅蘭色"],
+      [134, 96, 142, "Moderate Purple", "中紫色"],
+      [135, 86, 146, "Strong Purple", "濃紫色"],
+      [96, 78, 151, "Strong Violet", "濃紫羅蘭色"],
+      [84, 90, 167, "Strong Purplish Blue", "濃紫藍色"],
+      [78, 81, 128, "Moderate Purplish Blue", "中紫藍色"],
+      [96, 78, 129, "Moderate Violet", "中紫羅蘭色"],
+      [85, 76, 105, "Grayish Violet", "灰紫羅蘭色"],
+      [96, 47, 107, "Deep Purple", "深紫色"],
+      [84, 25, 78, "Very Deep Reddish Purple", "極深紅紫色"],
+      [64, 26, 76, "Very Deep Purple", "極深紫色"],
+      [50, 23, 77, "Deep Violet", "深紫羅蘭色"],
+      [48, 38, 122, "Vivid Purplish Blue", "鮮紫藍色"],
+      [39, 36, 88, "Deep Purplish Blue", "深紫藍色"],
+      [47, 33, 64, "Dark Violet", "暗紫羅蘭色"],
+      [37, 36, 64, "Dark Purplish Blue", "暗紫藍色"],
+      [41, 30, 41, "Blackish Purple", "黑紫色"],
+      [46, 29, 33, "Blackish Red", "黑紅色"],
+      [56, 21, 44, "Very Dark Purplish Red", "極暗紫紅色"],
+      [52, 23, 49, "Very Dark Reddish Purple", "極暗紅紫色"],
+      [48, 25, 52, "Very Dark Purple", "極暗紫色"],
+      [93, 57, 84, "Dark Reddish Purple", "暗紅紫色"],
+      [86, 60, 92, "Dark Purple", "暗紫色"],
+      [80, 64, 77, "Dark Grayish Purple", "暗灰紫色"],
+      [84, 61, 63, "Dark Grayish Red", "暗灰紅色"],
+      [75, 54, 33, "Dark Yellowish Brown", "暗黃棕色"],
+      [66, 37, 24, "Dark Brown", "暗棕色"],
+      [67, 48, 46, "Dark Grayish Reddish Brown", "暗灰紅棕色"],
+      [62, 29, 30, "Dark Reddish Brown", "暗紅棕色"],
+      [114, 47, 55, "Dark Red", "暗紅色"],
+      [103, 49, 71, "Dark Purplish Red", "暗紫紅色"],
+      [84, 19, 59, "Very Deep Purplish Red", "極深紫紅色"],
+      [63, 23, 40, "Very Dark Red", "極暗紅色"],
+      [120, 24, 74, "Deep Purplish Red", "深紫紅色"],
+      [132, 27, 45, "Deep Red", "深紅色"],
+      [92, 9, 35, "Very Deep Red", "極深紅色"],
+      [112, 41, 99, "Deep Reddish Purple", "深紅紫色"],
+      [135, 0, 116, "Vivid Reddish Purple", "鮮紅紫色"],
+    ];
+
+    const simulations = [
+      { key: "normal", title: "一般視覺", subtitle: "原始顏色", matrix: null },
+      {
+        key: "protanopia",
+        title: "紅色弱/盲",
+        subtitle: "Protanopia",
+        matrix: [
+          0.567, 0.433, 0,
+          0.558, 0.442, 0,
+          0, 0.242, 0.758
+        ]
+      },
+      {
+        key: "deuteranopia",
+        title: "綠色弱/盲",
+        subtitle: "Deuteranopia",
+        matrix: [
+          0.625, 0.375, 0,
+          0.7, 0.3, 0,
+          0, 0.3, 0.7
+        ]
+      },
+      {
+        key: "tritanopia",
+        title: "藍黃色弱/盲",
+        subtitle: "Tritanopia",
+        matrix: [
+          0.95, 0.05, 0,
+          0, 0.433, 0.567,
+          0, 0.475, 0.525
+        ]
+      }
+    ];
+
+    let stream = null;
+    let facingMode = "environment";
+    let animationFrame = null;
+    let lastSampleAt = 0;
+    let currentHex = "";
+    let currentResult = null;
+    let isFrozen = false;
+    let colorHistory = [];
+    let compareA = null;
+    let compareB = null;
+
+    function clamp(value) {
+      return Math.max(0, Math.min(255, Math.round(value)));
+    }
+
+    function rgbToHex({ r, g, b }) {
+      return `#${[r, g, b].map((value) => value.toString(16).padStart(2, "0")).join("").toUpperCase()}`;
+    }
+
+    function hexToRgb(hex) {
+      const normalized = hex.replace("#", "");
+      return {
+        r: parseInt(normalized.slice(0, 2), 16),
+        g: parseInt(normalized.slice(2, 4), 16),
+        b: parseInt(normalized.slice(4, 6), 16)
+      };
+    }
+
+    function rgbToHsl({ r, g, b }) {
+      const red = r / 255;
+      const green = g / 255;
+      const blue = b / 255;
+      const max = Math.max(red, green, blue);
+      const min = Math.min(red, green, blue);
+      let hue = 0;
+      let saturation = 0;
+      const lightness = (max + min) / 2;
+
+      if (max !== min) {
+        const delta = max - min;
+        saturation = lightness > 0.5 ? delta / (2 - max - min) : delta / (max + min);
+
+        if (max === red) hue = (green - blue) / delta + (green < blue ? 6 : 0);
+        if (max === green) hue = (blue - red) / delta + 2;
+        if (max === blue) hue = (red - green) / delta + 4;
+        hue *= 60;
+      }
+
+      return {
+        h: Math.round(hue),
+        s: Math.round(saturation * 100),
+        l: Math.round(lightness * 100)
+      };
+    }
+
+    function rgbToXyz({ r, g, b }) {
+      const normalize = (value) => {
+        const channel = value / 255;
+        return channel > 0.04045
+          ? Math.pow((channel + 0.055) / 1.055, 2.4)
+          : channel / 12.92;
+      };
+
+      const red = normalize(r);
+      const green = normalize(g);
+      const blue = normalize(b);
+
+      return {
+        x: (red * 0.4124 + green * 0.3576 + blue * 0.1805) * 100,
+        y: (red * 0.2126 + green * 0.7152 + blue * 0.0722) * 100,
+        z: (red * 0.0193 + green * 0.1192 + blue * 0.9505) * 100
+      };
+    }
+
+    function xyzToLab({ x, y, z }) {
+      const white = { x: 95.047, y: 100, z: 108.883 };
+      const pivot = (value) => value > 0.008856
+        ? Math.cbrt(value)
+        : (7.787 * value) + 16 / 116;
+
+      const fx = pivot(x / white.x);
+      const fy = pivot(y / white.y);
+      const fz = pivot(z / white.z);
+
+      return {
+        l: (116 * fy) - 16,
+        a: 500 * (fx - fy),
+        b: 200 * (fy - fz)
+      };
+    }
+
+    function rgbToLab(rgb) {
+      return xyzToLab(rgbToXyz(rgb));
+    }
+
+    function degreesToRadians(degrees) {
+      return degrees * Math.PI / 180;
+    }
+
+    function radiansToDegrees(radians) {
+      return radians * 180 / Math.PI;
+    }
+
+    function atan2Degrees(y, x) {
+      const degrees = radiansToDegrees(Math.atan2(y, x));
+      return degrees >= 0 ? degrees : degrees + 360;
+    }
+
+    function deltaE2000(lab1, lab2) {
+      const kL = 1;
+      const kC = 1;
+      const kH = 1;
+      const c1 = Math.hypot(lab1.a, lab1.b);
+      const c2 = Math.hypot(lab2.a, lab2.b);
+      const avgC = (c1 + c2) / 2;
+      const avgC7 = Math.pow(avgC, 7);
+      const g = 0.5 * (1 - Math.sqrt(avgC7 / (avgC7 + Math.pow(25, 7))));
+      const a1Prime = (1 + g) * lab1.a;
+      const a2Prime = (1 + g) * lab2.a;
+      const c1Prime = Math.hypot(a1Prime, lab1.b);
+      const c2Prime = Math.hypot(a2Prime, lab2.b);
+      const h1Prime = c1Prime === 0 ? 0 : atan2Degrees(lab1.b, a1Prime);
+      const h2Prime = c2Prime === 0 ? 0 : atan2Degrees(lab2.b, a2Prime);
+      const deltaLPrime = lab2.l - lab1.l;
+      const deltaCPrime = c2Prime - c1Prime;
+      let deltaHPrime = 0;
+
+      if (c1Prime * c2Prime !== 0) {
+        const hueDiff = h2Prime - h1Prime;
+        if (Math.abs(hueDiff) <= 180) deltaHPrime = hueDiff;
+        else if (hueDiff > 180) deltaHPrime = hueDiff - 360;
+        else deltaHPrime = hueDiff + 360;
+      }
+
+      const deltaBigHPrime = 2 * Math.sqrt(c1Prime * c2Prime) * Math.sin(degreesToRadians(deltaHPrime / 2));
+      const avgLPrime = (lab1.l + lab2.l) / 2;
+      const avgCPrime = (c1Prime + c2Prime) / 2;
+      let avgHPrime = h1Prime + h2Prime;
+
+      if (c1Prime * c2Prime !== 0) {
+        if (Math.abs(h1Prime - h2Prime) <= 180) avgHPrime = (h1Prime + h2Prime) / 2;
+        else if (h1Prime + h2Prime < 360) avgHPrime = (h1Prime + h2Prime + 360) / 2;
+        else avgHPrime = (h1Prime + h2Prime - 360) / 2;
+      }
+
+      const t = 1
+        - 0.17 * Math.cos(degreesToRadians(avgHPrime - 30))
+        + 0.24 * Math.cos(degreesToRadians(2 * avgHPrime))
+        + 0.32 * Math.cos(degreesToRadians(3 * avgHPrime + 6))
+        - 0.20 * Math.cos(degreesToRadians(4 * avgHPrime - 63));
+      const deltaTheta = 30 * Math.exp(-Math.pow((avgHPrime - 275) / 25, 2));
+      const avgCPrime7 = Math.pow(avgCPrime, 7);
+      const rC = 2 * Math.sqrt(avgCPrime7 / (avgCPrime7 + Math.pow(25, 7)));
+      const sL = 1 + (0.015 * Math.pow(avgLPrime - 50, 2)) / Math.sqrt(20 + Math.pow(avgLPrime - 50, 2));
+      const sC = 1 + 0.045 * avgCPrime;
+      const sH = 1 + 0.015 * avgCPrime * t;
+      const rT = -Math.sin(degreesToRadians(2 * deltaTheta)) * rC;
+      const lTerm = deltaLPrime / (kL * sL);
+      const cTerm = deltaCPrime / (kC * sC);
+      const hTerm = deltaBigHPrime / (kH * sH);
+
+      return Math.sqrt(
+        Math.pow(lTerm, 2) +
+        Math.pow(cTerm, 2) +
+        Math.pow(hTerm, 2) +
+        rT * cTerm * hTerm
+      );
+    }
+
+    const preparedIsccNbsCentroids = isccNbsCentroids.map(([r, g, b, englishName, chineseName], index) => ({
+      id: index + 1,
+      englishName,
+      chineseName,
+      rgb: { r, g, b },
+      lab: rgbToLab({ r, g, b })
+    }));
+
+    function luminance({ r, g, b }) {
+      return (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255;
+    }
+
+    function getReadableTextColor(rgb) {
+      return luminance(rgb) > 0.55 ? "#0f172a" : "#f8fafc";
+    }
+
+    function getTone(rgb) {
+      const light = luminance(rgb);
+      if (light < 0.22) return "深色";
+      if (light < 0.42) return "偏暗";
+      if (light < 0.68) return "中等亮度";
+      if (light < 0.85) return "偏亮";
+      return "淺色";
+    }
+
+    function formatMatchConfidence(distance) {
+      if (distance <= 2) return "幾乎相同";
+      if (distance <= 5) return "非常接近";
+      if (distance <= 10) return "接近";
+      return "最接近";
+    }
+
+    function getColorMatches(rgb, limit = 3) {
+      const lab = rgbToLab(rgb);
+      return preparedIsccNbsCentroids
+        .map((swatch) => ({
+          ...swatch,
+          distance: deltaE2000(lab, swatch.lab)
+        }))
+        .sort((a, b) => a.distance - b.distance)
+        .slice(0, limit);
+    }
+
+    function getColorName(rgb) {
+      const matches = getColorMatches(rgb, 3);
+      const closest = matches[0];
+      const roundedDistance = closest.distance.toFixed(1);
+      const confidence = formatMatchConfidence(closest.distance);
+      const displayName = closest.distance > 10 ? `接近${closest.chineseName}` : closest.chineseName;
+
+      return {
+        name: displayName,
+        note: `ISCC-NBS ${closest.englishName}，${confidence}，CIEDE2000 ΔE ${roundedDistance}。`,
+        matches
+      };
+    }
+
+    function simulateColor(rgb, matrix) {
+      if (!matrix) return rgb;
+      return {
+        r: clamp(rgb.r * matrix[0] + rgb.g * matrix[1] + rgb.b * matrix[2]),
+        g: clamp(rgb.r * matrix[3] + rgb.g * matrix[4] + rgb.b * matrix[5]),
+        b: clamp(rgb.r * matrix[6] + rgb.g * matrix[7] + rgb.b * matrix[8])
+      };
+    }
+
+    function relativeLuminance(rgb) {
+      const channel = (value) => {
+        const normalized = value / 255;
+        return normalized <= 0.03928
+          ? normalized / 12.92
+          : Math.pow((normalized + 0.055) / 1.055, 2.4);
+      };
+      return 0.2126 * channel(rgb.r) + 0.7152 * channel(rgb.g) + 0.0722 * channel(rgb.b);
+    }
+
+    function contrastRatio(rgbA, rgbB) {
+      const lighter = Math.max(relativeLuminance(rgbA), relativeLuminance(rgbB));
+      const darker = Math.min(relativeLuminance(rgbA), relativeLuminance(rgbB));
+      return (lighter + 0.05) / (darker + 0.05);
+    }
+
+    function createColorResult(rgb) {
+      const roundedRgb = { r: clamp(rgb.r), g: clamp(rgb.g), b: clamp(rgb.b) };
+      const hex = rgbToHex(roundedRgb);
+      const hsl = rgbToHsl(roundedRgb);
+      const named = getColorName(roundedRgb);
+      return {
+        rgb: roundedRgb,
+        hex,
+        hsl,
+        name: named.name,
+        note: named.note,
+        matches: named.matches,
+        lab: rgbToLab(roundedRgb)
+      };
+    }
+
+    function renderClosestMatches(result) {
+      closestList.innerHTML = "";
+      result.matches.forEach((match, index) => {
+        const row = document.createElement("div");
+        row.className = "info-row";
+        row.innerHTML = `<strong>${index + 1}. ${match.chineseName}</strong><span>${match.englishName} · ΔE ${match.distance.toFixed(1)}</span>`;
+        closestList.append(row);
+      });
+    }
+
+    function renderContrastAdvice(result) {
+      const black = { r: 0, g: 0, b: 0 };
+      const white = { r: 255, g: 255, b: 255 };
+      const blackRatio = contrastRatio(result.rgb, black);
+      const whiteRatio = contrastRatio(result.rgb, white);
+      const useWhite = whiteRatio >= blackRatio;
+      const bestRatio = useWhite ? whiteRatio : blackRatio;
+      const textColor = useWhite ? "白字" : "黑字";
+      const wcag = bestRatio >= 7 ? "AAA" : bestRatio >= 4.5 ? "AA" : "未達 AA";
+      contrastAdvice.innerHTML = `<div class="contrast-swatch" style="--item-color: ${result.hex}"></div><div><strong>建議使用${textColor}</strong><span class="muted-text">最佳對比 ${bestRatio.toFixed(1)}:1，WCAG ${wcag}。黑字 ${blackRatio.toFixed(1)}:1，白字 ${whiteRatio.toFixed(1)}:1。</span></div>`;
+    }
+
+    function renderConfusionAdvice(result) {
+      const candidates = result.matches.slice(1);
+      const warnings = [];
+      simulations.slice(1).forEach((simulation) => {
+        const simulatedCurrent = simulateColor(result.rgb, simulation.matrix);
+        const currentLab = rgbToLab(simulatedCurrent);
+        candidates.forEach((match) => {
+          const simulatedCandidate = simulateColor(match.rgb, simulation.matrix);
+          const distance = deltaE2000(currentLab, rgbToLab(simulatedCandidate));
+          if (distance <= 6) {
+            warnings.push(`${simulation.title} 下可能接近 ${match.chineseName}（ΔE ${distance.toFixed(1)}）`);
+          }
+        });
+      });
+
+      confusionAdvice.innerHTML = warnings.length
+        ? `<strong>可能混淆</strong><span>${warnings.slice(0, 3).join("；")}。</span>`
+        : `<strong>混淆風險較低</strong><span>目前色與最相近候選在三種模擬下仍有一定差距。</span>`;
+    }
+
+    function addHistory(result) {
+      colorHistory = [result, ...colorHistory.filter((item) => item.hex !== result.hex)].slice(0, 8);
+      renderHistory();
+    }
+
+    function renderHistory() {
+      if (!colorHistory.length) {
+        historyList.textContent = "尚無歷史紀錄。點選畫面、重新取樣或手動選色會加入紀錄。";
+        return;
+      }
+
+      historyList.innerHTML = "";
+      colorHistory.forEach((item) => {
+        const button = document.createElement("button");
+        button.className = "history-item";
+        button.type = "button";
+        button.innerHTML = `<span class="history-swatch" style="--item-color: ${item.hex}"></span><span><strong>${item.name}</strong><span class="muted-text">${item.hex}</span></span><span class="muted-text">回填</span>`;
+        button.addEventListener("click", () => updateColor(item.rgb, { force: true }));
+        historyList.append(button);
+      });
+    }
+
+    function renderCompareSlot(element, label, result) {
+      if (!result) {
+        element.textContent = `${label} 色尚未設定`;
+        return;
+      }
+
+      element.innerHTML = `<span class="compare-swatch" style="--item-color: ${result.hex}"></span><strong>${label}：${result.name}</strong><span>${result.hex}</span>`;
+    }
+
+    function interpretDeltaE(distance) {
+      if (distance < 2) return "幾乎看不出差異";
+      if (distance < 5) return "有些微差異";
+      if (distance < 10) return "明顯不同";
+      return "差異很大";
+    }
+
+    function renderCompare() {
+      renderCompareSlot(compareAElement, "A", compareA);
+      renderCompareSlot(compareBElement, "B", compareB);
+
+      if (!compareA || !compareB) {
+        compareResult.textContent = "設定 A 色與 B 色後會顯示 CIEDE2000 色差。";
+        return;
+      }
+
+      const distance = deltaE2000(compareA.lab, compareB.lab);
+      const simulatedNotes = simulations.slice(1).map((simulation) => {
+        const a = rgbToLab(simulateColor(compareA.rgb, simulation.matrix));
+        const b = rgbToLab(simulateColor(compareB.rgb, simulation.matrix));
+        return `${simulation.title} ΔE ${deltaE2000(a, b).toFixed(1)}`;
+      });
+      compareResult.innerHTML = `<strong>ΔE ${distance.toFixed(1)}，${interpretDeltaE(distance)}</strong><span>${simulatedNotes.join(" · ")}</span>`;
+    }
+
+    function updateColor(rgb, options = {}) {
+      const result = createColorResult(rgb);
+      if (result.hex === currentHex && !options.force && !options.record) return currentResult;
+      currentHex = result.hex;
+      currentResult = result;
+
+      document.documentElement.style.setProperty("--picked", result.hex);
+      manualColor.value = result.hex;
+      swatch.style.backgroundColor = result.hex;
+      colorName.textContent = result.name;
+      colorNote.textContent = result.note;
+      hexValue.textContent = result.hex;
+      rgbValue.textContent = `${result.rgb.r}, ${result.rgb.g}, ${result.rgb.b}`;
+      hslValue.textContent = `${result.hsl.h}°, ${result.hsl.s}%, ${result.hsl.l}%`;
+      toneValue.textContent = getTone(result.rgb);
+      renderClosestMatches(result);
+      renderContrastAdvice(result);
+      renderConfusionAdvice(result);
+
+      simGrid.innerHTML = "";
+      simulations.forEach((item) => {
+        const simulated = simulateColor(result.rgb, item.matrix);
+        const tile = document.createElement("div");
+        tile.className = "sim";
+        tile.style.setProperty("--sim-color", rgbToHex(simulated));
+        tile.style.setProperty("--sim-text", getReadableTextColor(simulated));
+        tile.innerHTML = `<strong>${item.title}</strong><span>${item.subtitle} · ${rgbToHex(simulated)}</span>`;
+        simGrid.append(tile);
+      });
+
+      if (options.record) addHistory(result);
+      renderCompare();
+      return result;
+    }
+
+    function drawVideoToCanvas() {
+      if (!video.videoWidth || !video.videoHeight) return false;
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+      return true;
+    }
+
+    function sampleCanvasAt(x, y, options = {}) {
+      if (!canvas.width || !canvas.height) return null;
+      const boxSize = Math.max(8, Math.floor(Math.min(canvas.width, canvas.height) * 0.04));
+      const startX = Math.max(0, Math.min(canvas.width - boxSize, Math.floor(x - boxSize / 2)));
+      const startY = Math.max(0, Math.min(canvas.height - boxSize, Math.floor(y - boxSize / 2)));
+      const pixels = ctx.getImageData(startX, startY, boxSize, boxSize).data;
+      let r = 0;
+      let g = 0;
+      let b = 0;
+      let count = 0;
+
+      for (let i = 0; i < pixels.length; i += 4) {
+        r += pixels[i];
+        g += pixels[i + 1];
+        b += pixels[i + 2];
+        count += 1;
+      }
+
+      return updateColor({
+        r: clamp(r / count),
+        g: clamp(g / count),
+        b: clamp(b / count)
+      }, options);
+    }
+
+    function sampleFromVideo(options = {}) {
+      if (!isFrozen && !drawVideoToCanvas()) return null;
+      return sampleCanvasAt(canvas.width / 2, canvas.height / 2, options);
+    }
+
+    function samplingLoop(timestamp) {
+      if (timestamp - lastSampleAt > 180) {
+        sampleFromVideo();
+        lastSampleAt = timestamp;
+      }
+      animationFrame = requestAnimationFrame(samplingLoop);
+    }
+
+    function stopCamera({ showPermission = false } = {}) {
+      if (animationFrame) cancelAnimationFrame(animationFrame);
+      if (stream) stream.getTracks().forEach((track) => track.stop());
+      animationFrame = null;
+      stream = null;
+      video.srcObject = null;
+      isFrozen = false;
+      viewer.classList.remove("is-frozen");
+      freezeFrameButton.textContent = "凍結畫面";
+      freezeFrameButton.disabled = true;
+      sampleNowButton.disabled = true;
+      switchCameraButton.disabled = true;
+      cameraPowerButton.textContent = "開啟相機";
+      cameraPowerButton.disabled = false;
+      sampleMarker.hidden = true;
+      if (showPermission) permission.hidden = false;
+    }
+
+    async function startCamera() {
+      stopCamera();
+      try {
+        stream = await navigator.mediaDevices.getUserMedia({
+          video: {
+            facingMode: { ideal: facingMode },
+            width: { ideal: 1280 },
+            height: { ideal: 720 }
+          },
+          audio: false
+        });
+        video.srcObject = stream;
+        await video.play();
+        permission.hidden = true;
+        fallback.hidden = true;
+        sampleNowButton.disabled = false;
+        switchCameraButton.disabled = false;
+        freezeFrameButton.disabled = false;
+        cameraPowerButton.disabled = false;
+        cameraPowerButton.textContent = "關閉相機";
+        samplingLoop();
+      } catch (error) {
+        fallback.hidden = false;
+        fallbackText.textContent = "相機無法啟動。請確認已使用 HTTPS、允許相機權限，或改用手動選色。";
+        sampleNowButton.disabled = true;
+        switchCameraButton.disabled = true;
+        freezeFrameButton.disabled = true;
+        cameraPowerButton.disabled = false;
+        cameraPowerButton.textContent = "開啟相機";
+        permission.hidden = false;
+        console.error(error);
+      }
+    }
+
+    startCameraButton.addEventListener("click", startCamera);
+    sampleNowButton.addEventListener("click", () => sampleFromVideo({ record: true, force: true }));
+    switchCameraButton.addEventListener("click", () => {
+      facingMode = facingMode === "environment" ? "user" : "environment";
+      startCamera();
+    });
+    freezeFrameButton.addEventListener("click", () => {
+      if (!isFrozen) {
+        if (!drawVideoToCanvas()) return;
+        if (animationFrame) cancelAnimationFrame(animationFrame);
+        animationFrame = null;
+        isFrozen = true;
+        viewer.classList.add("is-frozen");
+        freezeFrameButton.textContent = "恢復即時";
+        sampleFromVideo({ record: true, force: true });
+        return;
+      }
+
+      isFrozen = false;
+      viewer.classList.remove("is-frozen");
+      freezeFrameButton.textContent = "凍結畫面";
+      if (!animationFrame) samplingLoop(performance.now());
+    });
+    cameraPowerButton.addEventListener("click", () => {
+      if (stream) {
+        stopCamera({ showPermission: true });
+        return;
+      }
+
+      startCamera();
+    });
+    viewer.addEventListener("pointerdown", (event) => {
+      if (permission.hidden === false || (!isFrozen && !video.videoWidth)) return;
+      if (!isFrozen && !drawVideoToCanvas()) return;
+      const rect = viewer.getBoundingClientRect();
+      const xRatio = (event.clientX - rect.left) / rect.width;
+      const yRatio = (event.clientY - rect.top) / rect.height;
+      const x = Math.max(0, Math.min(canvas.width - 1, xRatio * canvas.width));
+      const y = Math.max(0, Math.min(canvas.height - 1, yRatio * canvas.height));
+      sampleMarker.hidden = false;
+      sampleMarker.style.left = `${xRatio * 100}%`;
+      sampleMarker.style.top = `${yRatio * 100}%`;
+      sampleCanvasAt(x, y, { record: true, force: true });
+    });
+    setCompareAButton.addEventListener("click", () => {
+      if (!currentResult) return;
+      compareA = currentResult;
+      renderCompare();
+    });
+    setCompareBButton.addEventListener("click", () => {
+      if (!currentResult) return;
+      compareB = currentResult;
+      renderCompare();
+    });
+    manualColor.addEventListener("input", (event) => updateColor(hexToRgb(event.target.value), { record: true, force: true }));
+
+    if (!navigator.mediaDevices?.getUserMedia) {
+      fallback.hidden = false;
+      fallbackText.textContent = "這個瀏覽器不支援相機 API，請改用手動選色。";
+      permission.hidden = true;
+      cameraPowerButton.disabled = true;
+    }
+
+    updateColor(hexToRgb(manualColor.value), { force: true });
+    renderHistory();
+  </script>
+</body>
+</html>
