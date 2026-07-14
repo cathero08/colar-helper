@@ -5,7 +5,14 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="theme-color" content="#111827">
   <meta name="description" content="手機優先的色彩辨識與色盲模擬工具，可部署在 GitHub Pages 使用。">
-  <title>Color Helper | 色彩輔助工具</title>
+  <title>色弱救星 | 色彩輔助工具</title>
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="色弱救星">
   <style>
     :root {
       color-scheme: dark;
@@ -589,7 +596,7 @@
 <body>
   <main class="app">
     <section class="hero" aria-labelledby="title">
-      <p class="eyebrow">Color Helper</p>
+      <p class="eyebrow">色弱救星</p>
       <h1 id="title">手機色彩辨識工具</h1>
       <p class="intro">
         參考 Color Blind Pal 的使用方式：用相機對準物品中央，即時辨識顏色、顯示色碼，並模擬常見色覺差異下看到的顏色。
@@ -1605,6 +1612,12 @@
 
     updateColor(hexToRgb(manualColor.value), { force: true });
     renderHistory();
+
+    if ("serviceWorker" in navigator) {
+      window.addEventListener("load", () => {
+        navigator.serviceWorker.register("sw.js").catch(() => {});
+      });
+    }
   </script>
 </body>
 </html>
